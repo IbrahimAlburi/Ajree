@@ -32,9 +32,9 @@ export default function ExploreScreen() {
         <ThemedText type="defaultSemiBold" style={styles.sectionTitle}>
           Popular Routes
         </ThemedText>
-        {mockActivities.map((item, index) => (
+        {mockActivities.map((item) => (
           <View
-            key={`route-${item.user.username}-${index}`}
+            key={item.id}
             style={[styles.routeCard, { backgroundColor: card, borderColor: border }]}>
             <Image
               source={{ uri: item.activity.mapImage }}

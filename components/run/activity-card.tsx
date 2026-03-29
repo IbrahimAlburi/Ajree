@@ -1,15 +1,22 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { Image } from 'expo-image';
-import { useState } from 'react';
+import * as Haptics from 'expo-haptics';
+import { useRouter } from 'expo-router';
 import { Pressable, StyleSheet, View } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
+import { useAppData } from '@/context/app-data';
 import type { FeedActivity } from '@/constants/run-data';
+import { openRouteInMaps } from '@/lib/maps';
+import { navigateToUserProfile } from '@/lib/profile-navigation';
 import { useThemeColor } from '@/hooks/use-theme-color';
 
-export function ActivityCard({ user, activity, stats }: FeedActivity) {
-  const [liked, setLiked] = useState(false);
-  const [likeCount, setLikeCount] = useState(stats.likes);
+export function ActivityCard({ id, user, activity, stats }: FeedActivity) {
+  const router = useRouter();
+  const { likes, comments, toggleLike, profile, isLoggedIn } = useAppData();
+  const likeState = likes[id] ?? { liked: false, count: stats.likes };
+  const extraComments = comments[id]?.length ?? 0;
+  const commentCount = stats.comments + extraComments;
 
   const borderColor = useThemeColor({}, 'border');
   const cardColor = useThemeColor({}, 'card');
@@ -18,42 +25,67 @@ export function ActivityCard({ user, activity, stats }: FeedActivity) {
   const success = useThemeColor({}, 'success');
   const destructive = useThemeColor({}, 'destructive');
   const mutedBg = useThemeColor({}, 'muted');
+  const tint = useThemeColor({}, 'tint');
 
   const handleLike = () => {
-    setLiked((wasLiked) => {
-      setLikeCount((c) => (wasLiked ? c - 1 : c + 1));
-      return !wasLiked;
+    void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    toggleLike(id);
+  };
+
+  const handleComment = () => {
+    router.push({ pathname: '/activity/[id]', params: { id } });
+  };
+
+  const goProfile = () => {
+    void Haptics.selectionAsync();
+    navigateToUserProfile(router, user.username, {
+      isLoggedIn,
+      myUsername: profile.user.username,
     });
   };
 
   return (
-    <View style={[styles.card, { backgroundColor: cardColor, borderBottomColor: borderColor }]}>
+    <View style={[styles.card, { backgroundColor: cardColor, borderColor: borderColor }]}>
       <View style={styles.row}>
-        <Image source={{ uri: user.avatar }} style={styles.avatar} />
+        <Pressable onPress={goProfile} accessibilityRole="button" accessibilityLabel={`${user.name} profile`}>
+          <Image source={{ uri: user.avatar }} style={styles.avatar} />
+        </Pressable>
         <View style={styles.headerText}>
-          <View style={styles.nameRow}>
-            <ThemedText type="defaultSemiBold">{user.name}</ThemedText>
-            {activity.type === 'race' && (
-              <Ionicons name="ribbon" size={16} color={success} style={styles.award} />
-            )}
+          <Pressable onPress={goProfile}>
+            <View style={styles.nameRow}>
+              <ThemedText type="defaultSemiBold">{user.name}</ThemedText>
+              {activity.type === 'race' && (
+                <Ionicons name="ribbon" size={16} color={success} style={styles.award} />
+              )}
+            </View>
+          </Pressable>
+          <View style={styles.metaRow}>
+            <Pressable onPress={goProfile} hitSlop={{ top: 6, bottom: 6, left: 0, right: 4 }}>
+              <ThemedText style={[styles.meta, styles.handle, { color: tint }]}>
+                @{user.username}
+              </ThemedText>
+            </Pressable>
+            <ThemedText style={[styles.meta, { color: muted }]}> · {activity.timestamp}</ThemedText>
           </View>
-          <ThemedText style={[styles.meta, { color: muted }]}>
-            @{user.username} · {activity.timestamp}
-          </ThemedText>
         </View>
       </View>
 
-      {activity.title ? (
-        <ThemedText type="defaultSemiBold" style={styles.title}>
-          {activity.title}
-        </ThemedText>
-      ) : null}
+      <Pressable
+        onPress={() => router.push({ pathname: '/activity/[id]', params: { id } })}
+        accessibilityRole="button"
+        accessibilityLabel={`Open activity from ${user.name}`}>
+        {activity.title ? (
+          <ThemedText type="defaultSemiBold" style={styles.title}>
+            {activity.title}
+          </ThemedText>
+        ) : null}
 
-      {activity.mapImage ? (
-        <View style={[styles.mapWrap, { backgroundColor: mutedBg }]}>
-          <Image source={{ uri: activity.mapImage }} style={styles.mapImage} contentFit="cover" />
-        </View>
-      ) : null}
+        {activity.mapImage ? (
+          <View style={[styles.mapWrap, { backgroundColor: mutedBg }]}>
+            <Image source={{ uri: activity.mapImage }} style={styles.mapImage} contentFit="cover" />
+          </View>
+        ) : null}
+      </Pressable>
 
       <View
         style={[
@@ -78,7 +110,12 @@ export function ActivityCard({ user, activity, stats }: FeedActivity) {
       </View>
 
       {activity.route ? (
-        <ThemedText style={[styles.route, { color: muted }]}>📍 {activity.route}</ThemedText>
+        <Pressable
+          onPress={() => openRouteInMaps(activity.route ?? '')}
+          accessibilityRole="link"
+          accessibilityLabel="Open route in maps">
+          <ThemedText style={[styles.route, { color: muted }]}>📍 {activity.route} · Maps</ThemedText>
+        </Pressable>
       ) : null}
 
       <View style={[styles.actions, { borderTopColor: borderColor }]}>
@@ -86,17 +123,21 @@ export function ActivityCard({ user, activity, stats }: FeedActivity) {
           onPress={handleLike}
           style={styles.actionBtn}
           accessibilityRole="button"
-          accessibilityLabel={liked ? 'Unlike' : 'Like'}>
+          accessibilityLabel={likeState.liked ? 'Unlike' : 'Like'}>
           <Ionicons
-            name={liked ? 'heart' : 'heart-outline'}
+            name={likeState.liked ? 'heart' : 'heart-outline'}
             size={22}
-            color={liked ? destructive : muted}
+            color={likeState.liked ? destructive : muted}
           />
-          <ThemedText style={[styles.actionCount, { color: muted }]}>{likeCount}</ThemedText>
+          <ThemedText style={[styles.actionCount, { color: muted }]}>{likeState.count}</ThemedText>
         </Pressable>
-        <Pressable style={styles.actionBtn} accessibilityRole="button" accessibilityLabel="Comment">
+        <Pressable
+          onPress={handleComment}
+          style={styles.actionBtn}
+          accessibilityRole="button"
+          accessibilityLabel="Comments">
           <Ionicons name="chatbubble-outline" size={20} color={muted} />
-          <ThemedText style={[styles.actionCount, { color: muted }]}>{stats.comments}</ThemedText>
+          <ThemedText style={[styles.actionCount, { color: muted }]}>{commentCount}</ThemedText>
         </Pressable>
       </View>
     </View>
@@ -105,8 +146,16 @@ export function ActivityCard({ user, activity, stats }: FeedActivity) {
 
 const styles = StyleSheet.create({
   card: {
+    marginHorizontal: 16,
+    marginBottom: 14,
     padding: 16,
-    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderRadius: 18,
+    borderWidth: StyleSheet.hairlineWidth,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.07,
+    shadowRadius: 10,
+    elevation: 3,
   },
   row: {
     flexDirection: 'row',
@@ -134,11 +183,20 @@ const styles = StyleSheet.create({
     fontSize: 13,
     marginTop: 2,
   },
+  metaRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    alignItems: 'center',
+    marginTop: 2,
+  },
+  handle: {
+    fontWeight: '600',
+  },
   title: {
     marginBottom: 8,
   },
   mapWrap: {
-    borderRadius: 10,
+    borderRadius: 14,
     overflow: 'hidden',
     marginBottom: 12,
   },
