@@ -1,32 +1,29 @@
-import Ionicons from '@expo/vector-icons/Ionicons';
-import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { ActivityCard } from '@/components/run/activity-card';
+import { ChallengeCard } from '@/components/run/challenge-card';
 import { ThemedText } from '@/components/themed-text';
-import { mockActivities } from '@/constants/run-data';
+import { mockChallenges } from '@/constants/run-data';
 import { useThemeColor } from '@/hooks/use-theme-color';
 
-export default function HomeScreen() {
+export default function ChallengesScreen() {
   const bg = useThemeColor({}, 'background');
   const card = useThemeColor({}, 'card');
   const border = useThemeColor({}, 'border');
-  const muted = useThemeColor({}, 'mutedForeground');
 
   return (
     <SafeAreaView style={[styles.safe, { backgroundColor: bg }]} edges={['top']}>
       <View style={[styles.header, { backgroundColor: card, borderBottomColor: border }]}>
-        <ThemedText type="subtitle">RunTogether</ThemedText>
-        <Pressable hitSlop={12} accessibilityRole="button" accessibilityLabel="Notifications">
-          <Ionicons name="notifications-outline" size={26} color={muted} />
-        </Pressable>
+        <ThemedText type="subtitle">Challenges</ThemedText>
       </View>
       <ScrollView
-        style={styles.scroll}
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}>
-        {mockActivities.map((item, index) => (
-          <ActivityCard key={`${item.user.username}-${index}`} {...item} />
+        <ThemedText type="defaultSemiBold" style={styles.sectionTitle}>
+          Active Challenges
+        </ThemedText>
+        {mockChallenges.map((challenge) => (
+          <ChallengeCard key={challenge.title} challenge={challenge} />
         ))}
       </ScrollView>
     </SafeAreaView>
@@ -38,17 +35,16 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
     paddingHorizontal: 16,
     paddingVertical: 14,
     borderBottomWidth: StyleSheet.hairlineWidth,
   },
-  scroll: {
-    flex: 1,
-  },
   scrollContent: {
-    paddingBottom: 24,
+    padding: 16,
+    paddingBottom: 32,
+  },
+  sectionTitle: {
+    marginBottom: 12,
+    fontSize: 18,
   },
 });
