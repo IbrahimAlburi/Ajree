@@ -1,0 +1,14 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // User profiles — only the signed-in user can read/write their own doc (see lib/firestore-user.ts)
+    match /users/{userId} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+    }
+
+    // Logged activities — subcollection (see lib/firestore-activities.ts)
+    match /users/{userId}/activities/{activityId} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+    }
+  }
+}

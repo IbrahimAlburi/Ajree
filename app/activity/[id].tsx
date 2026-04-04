@@ -14,8 +14,11 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { ThemedText } from '@/components/themed-text';
+import { TrackMap } from '@/components/run/track-map';
 import { useAppData } from '@/context/app-data';
+import { navigateToLogin } from '@/lib/auth-navigation';
 import { openRouteInMaps } from '@/lib/maps';
+import { STRAVA_ROUTE_ORANGE } from '@/constants/route-brand';
 import { navigateToUserProfile } from '@/lib/profile-navigation';
 import { useThemeColor } from '@/hooks/use-theme-color';
 
@@ -35,7 +38,6 @@ export default function ActivityDetailScreen() {
   const mutedBg = useThemeColor({}, 'muted');
   const info = useThemeColor({}, 'info');
   const success = useThemeColor({}, 'success');
-  const destructive = useThemeColor({}, 'destructive');
   const inputBg = useThemeColor({}, 'inputBackground');
   const tint = useThemeColor({}, 'tint');
   const primaryText = useThemeColor({}, 'primaryButtonText');
@@ -57,7 +59,7 @@ export default function ActivityDetailScreen() {
 
   const focusInput = useCallback(() => {
     if (!isLoggedIn) {
-      router.push('/(tabs)/profile');
+      navigateToLogin(router);
       return;
     }
     inputRef.current?.focus();
@@ -83,6 +85,9 @@ export default function ActivityDetailScreen() {
   }
 
   const { user, activity: act } = activity;
+  const accent = act.type === 'race' ? success : tint;
+  const kindLine =
+    act.type === 'race' ? 'Race or event · shared activity' : 'Training run · shared activity';
 
   return (
     <SafeAreaView style={[styles.safe, { backgroundColor: bg }]} edges={['bottom']}>
@@ -91,28 +96,37 @@ export default function ActivityDetailScreen() {
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         keyboardVerticalOffset={Platform.OS === 'ios' ? 88 : 0}>
         <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
-          <View style={[styles.card, { backgroundColor: card, borderBottomColor: border }]}>
+          <View
+            style={[
+              styles.card,
+              {
+                backgroundColor: card,
+                borderBottomColor: border,
+                borderLeftColor: accent,
+              },
+            ]}>
             <View style={styles.row}>
               <Pressable onPress={goProfile} accessibilityRole="button" accessibilityLabel={`${user.name} profile`}>
                 <Image source={{ uri: user.avatar }} style={styles.avatar} />
               </Pressable>
               <View style={styles.headerText}>
-                <Pressable onPress={goProfile}>
-                  <View style={styles.nameRow}>
+                <View style={styles.nameRow}>
+                  <Pressable onPress={goProfile} style={styles.namePress}>
                     <ThemedText type="defaultSemiBold">{user.name}</ThemedText>
-                    {act.type === 'race' && (
-                      <Ionicons name="ribbon" size={16} color={success} style={styles.award} />
-                    )}
+                  </Pressable>
+                  <View style={[styles.typePill, { backgroundColor: mutedBg, borderColor: border }]}>
+                    <ThemedText style={[styles.typePillText, { color: act.type === 'race' ? accent : tint }]}>
+                      {act.type === 'race' ? 'RACE' : 'RUN'}
+                    </ThemedText>
                   </View>
-                </Pressable>
+                </View>
                 <View style={styles.metaRow}>
                   <Pressable onPress={goProfile} hitSlop={{ top: 6, bottom: 6, left: 0, right: 4 }}>
-                    <ThemedText style={[styles.meta, styles.handle, { color: tint }]}>
-                      @{user.username}
-                    </ThemedText>
+                    <ThemedText style={[styles.meta, styles.handle, { color: tint }]}>@{user.username}</ThemedText>
                   </Pressable>
                   <ThemedText style={[styles.meta, { color: muted }]}> · {act.timestamp}</ThemedText>
                 </View>
+                <ThemedText style={[styles.kindLine, { color: muted }]}>{kindLine}</ThemedText>
               </View>
             </View>
 
@@ -122,7 +136,11 @@ export default function ActivityDetailScreen() {
               </ThemedText>
             ) : null}
 
-            {act.mapImage ? (
+            {act.routeCoords && act.routeCoords.length >= 2 ? (
+              <View style={[styles.mapWrap, { backgroundColor: mutedBg }]}>
+                <TrackMap coords={act.routeCoords} height={192} strokeColor={STRAVA_ROUTE_ORANGE} />
+              </View>
+            ) : act.mapImage ? (
               <View style={[styles.mapWrap, { backgroundColor: mutedBg }]}>
                 <Image source={{ uri: act.mapImage }} style={styles.mapImage} contentFit="cover" />
               </View>
@@ -137,15 +155,15 @@ export default function ActivityDetailScreen() {
                 },
               ]}>
               <View style={styles.statCol}>
-                <ThemedText style={[styles.statLabel, { color: muted }]}>Distance</ThemedText>
+                <ThemedText style={[styles.statLabel, { color: muted }]}>DISTANCE</ThemedText>
                 <ThemedText type="defaultSemiBold">{act.distance.toFixed(2)} km</ThemedText>
               </View>
               <View style={styles.statCol}>
-                <ThemedText style={[styles.statLabel, { color: muted }]}>Time</ThemedText>
+                <ThemedText style={[styles.statLabel, { color: muted }]}>TIME</ThemedText>
                 <ThemedText type="defaultSemiBold">{act.duration}</ThemedText>
               </View>
               <View style={styles.statCol}>
-                <ThemedText style={[styles.statLabel, { color: muted }]}>Pace</ThemedText>
+                <ThemedText style={[styles.statLabel, { color: muted }]}>PACE</ThemedText>
                 <ThemedText type="defaultSemiBold">{act.pace}</ThemedText>
               </View>
             </View>
@@ -156,30 +174,38 @@ export default function ActivityDetailScreen() {
                 accessibilityRole="link"
                 accessibilityLabel="Open route in maps">
                 <ThemedText style={[styles.route, { color: muted }]}>
-                  📍 {act.route} <ThemedText style={{ color: tint }}>· Open in Maps</ThemedText>
+                  {act.route} <ThemedText style={{ color: tint }}>· Open in Maps</ThemedText>
                 </ThemedText>
               </Pressable>
             ) : null}
 
             <View style={[styles.actions, { borderTopColor: border }]}>
               <Pressable
-                onPress={() => toggleLike(activity.id)}
+                onPress={() => {
+                  if (!isLoggedIn) {
+                    navigateToLogin(router);
+                    return;
+                  }
+                  toggleLike(activity.id);
+                }}
                 style={styles.actionBtn}
                 accessibilityRole="button"
-                accessibilityLabel={likeState.liked ? 'Unlike' : 'Like'}>
+                accessibilityLabel={likeState.liked ? 'Remove kudos' : 'Give kudos'}>
                 <Ionicons
-                  name={likeState.liked ? 'heart' : 'heart-outline'}
+                  name={likeState.liked ? 'thumbs-up' : 'thumbs-up-outline'}
                   size={22}
-                  color={likeState.liked ? destructive : muted}
+                  color={likeState.liked ? tint : muted}
                 />
+                <ThemedText style={[styles.actionLabel, { color: muted }]}>Kudos</ThemedText>
                 <ThemedText style={[styles.actionCount, { color: muted }]}>{likeState.count}</ThemedText>
               </Pressable>
               <Pressable
                 onPress={focusInput}
                 style={styles.actionBtn}
                 accessibilityRole="button"
-                accessibilityLabel="Comment">
-                <Ionicons name="chatbubble-outline" size={20} color={muted} />
+                accessibilityLabel="Join discussion">
+                <Ionicons name="chatbubbles-outline" size={20} color={muted} />
+                <ThemedText style={[styles.actionLabel, { color: muted }]}>Comment</ThemedText>
                 <ThemedText style={[styles.actionCount, { color: muted }]}>{commentTotal}</ThemedText>
               </Pressable>
             </View>
@@ -187,10 +213,12 @@ export default function ActivityDetailScreen() {
 
           <View style={styles.section}>
             <ThemedText type="defaultSemiBold" style={styles.sectionTitle}>
-              Comments
+              Discussion
             </ThemedText>
             {thread.length === 0 ? (
-              <ThemedText style={{ color: muted }}>No comments yet. Say something nice.</ThemedText>
+              <ThemedText style={{ color: muted }}>
+                No replies yet — start the thread with a question or a shout-out.
+              </ThemedText>
             ) : (
               thread.map((c) => (
                 <View
@@ -213,7 +241,7 @@ export default function ActivityDetailScreen() {
                 ref={inputRef}
                 value={draft}
                 onChangeText={setDraft}
-                placeholder="Add a comment…"
+                placeholder="Add to the discussion…"
                 placeholderTextColor={muted}
                 style={[styles.input, { backgroundColor: inputBg, color: textColor }]}
                 multiline
@@ -229,9 +257,14 @@ export default function ActivityDetailScreen() {
               </Pressable>
             </>
           ) : (
-            <ThemedText style={[styles.signInHint, { color: muted }]}>
-              Open the Profile tab and sign in to leave a comment.
-            </ThemedText>
+            <Pressable
+              onPress={() => navigateToLogin(router)}
+              accessibilityRole="button"
+              accessibilityLabel="Sign in to comment">
+              <ThemedText style={[styles.signInHint, { color: tint }]}>
+                Sign in to leave a comment — tap here.
+              </ThemedText>
+            </Pressable>
           )}
         </View>
       </KeyboardAvoidingView>
@@ -261,28 +294,48 @@ const styles = StyleSheet.create({
   card: {
     padding: 16,
     borderBottomWidth: StyleSheet.hairlineWidth,
+    borderLeftWidth: 4,
   },
   row: {
     flexDirection: 'row',
-    alignItems: 'center',
+    alignItems: 'flex-start',
     gap: 12,
     marginBottom: 12,
   },
   avatar: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
   },
   headerText: {
     flex: 1,
+    minWidth: 0,
   },
   nameRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
+    justifyContent: 'space-between',
+    gap: 8,
   },
-  award: {
-    marginTop: 1,
+  namePress: {
+    flex: 1,
+    minWidth: 0,
+  },
+  typePill: {
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 4,
+    borderWidth: StyleSheet.hairlineWidth,
+  },
+  typePillText: {
+    fontSize: 10,
+    fontWeight: '800',
+    letterSpacing: 0.6,
+  },
+  kindLine: {
+    fontSize: 12,
+    marginTop: 6,
+    lineHeight: 16,
   },
   meta: {
     fontSize: 13,
@@ -298,10 +351,12 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   title: {
-    marginBottom: 8,
+    marginBottom: 10,
+    fontSize: 18,
+    lineHeight: 26,
   },
   mapWrap: {
-    borderRadius: 10,
+    borderRadius: 4,
     overflow: 'hidden',
     marginBottom: 12,
   },
@@ -312,18 +367,20 @@ const styles = StyleSheet.create({
   statsGrid: {
     flexDirection: 'row',
     borderWidth: 1,
-    borderRadius: 10,
+    borderRadius: 4,
     padding: 12,
     marginBottom: 12,
-    gap: 16,
+    gap: 12,
   },
   statCol: {
     flex: 1,
     minWidth: 0,
   },
   statLabel: {
-    fontSize: 11,
-    marginBottom: 4,
+    fontSize: 10,
+    marginBottom: 6,
+    fontWeight: '700',
+    letterSpacing: 0.7,
   },
   route: {
     fontSize: 14,
@@ -332,17 +389,22 @@ const styles = StyleSheet.create({
   actions: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 24,
-    paddingTop: 10,
+    gap: 28,
+    paddingTop: 12,
     borderTopWidth: StyleSheet.hairlineWidth,
   },
   actionBtn: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    gap: 6,
+  },
+  actionLabel: {
+    fontSize: 14,
+    fontWeight: '600',
   },
   actionCount: {
     fontSize: 14,
+    fontWeight: '500',
   },
   section: {
     padding: 16,

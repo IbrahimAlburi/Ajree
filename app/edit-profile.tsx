@@ -16,6 +16,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { ThemedText } from '@/components/themed-text';
 import { useAppData } from '@/context/app-data';
 import { useThemeColor } from '@/hooks/use-theme-color';
+import { navigateToLogin } from '@/lib/auth-navigation';
 
 export default function EditProfileScreen() {
   const router = useRouter();
@@ -34,7 +35,7 @@ export default function EditProfileScreen() {
 
   useEffect(() => {
     if (hydrated && !isLoggedIn) {
-      router.back();
+      navigateToLogin(router, { replace: true });
     }
   }, [hydrated, isLoggedIn, router]);
 

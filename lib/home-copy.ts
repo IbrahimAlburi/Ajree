@@ -46,7 +46,8 @@ export function getFeedModeLabel(mode: 'foryou' | 'following'): { eyebrow: strin
   if (mode === 'following') {
     return {
       eyebrow: 'Your crew',
-      title: 'Runs from people you follow — chronological, no mystery algorithm.',
+      title:
+        'Only runners on your crew — same order they posted, no “for you” shuffle.',
     };
   }
   return {
@@ -92,7 +93,7 @@ export function getHomeHeroCopy(isLoggedIn: boolean, firstName: string): HomeHer
 
   return {
     headline: guestHead,
-    sub: 'Scroll the feed, peek at routes, and when you sign in on Profile, your stats and posts live here too.',
+    sub: 'Scroll the feed, peek at routes, and when you sign in on Profile, your stats and activities live here too.',
     whisper,
   };
 }

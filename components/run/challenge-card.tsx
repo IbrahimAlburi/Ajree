@@ -1,13 +1,28 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
-import { Pressable, StyleSheet, View } from 'react-native';
+import * as Haptics from 'expo-haptics';
+import { useEffect } from 'react';
+import {
+  ActivityIndicator,
+  LayoutAnimation,
+  Platform,
+  StyleSheet,
+  TouchableOpacity,
+  UIManager,
+  View,
+} from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
 import type { Challenge } from '@/constants/run-data';
+import { useAppData } from '@/context/app-data';
 import { useThemeColor } from '@/hooks/use-theme-color';
 
 type Props = { challenge: Challenge };
 
 export function ChallengeCard({ challenge }: Props) {
+  const { hydrated, joinedChallengeIds, toggleChallengeJoin, challengeJoinsReady } = useAppData();
+  const joined = joinedChallengeIds.has(challenge.id);
+  const canPress = hydrated && challengeJoinsReady;
+
   const cardColor = useThemeColor({}, 'card');
   const borderColor = useThemeColor({}, 'border');
   const muted = useThemeColor({}, 'mutedForeground');
@@ -15,9 +30,33 @@ export function ChallengeCard({ challenge }: Props) {
   const info = useThemeColor({}, 'info');
   const success = useThemeColor({}, 'success');
   const primaryText = useThemeColor({}, 'primaryButtonText');
+  const tint = useThemeColor({}, 'tint');
+
+  useEffect(() => {
+    if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
+      UIManager.setLayoutAnimationEnabledExperimental(true);
+    }
+  }, []);
+
+  const onToggleJoin = () => {
+    if (!canPress) return;
+    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+    void Haptics.impactAsync(
+      joined ? Haptics.ImpactFeedbackStyle.Light : Haptics.ImpactFeedbackStyle.Medium,
+    );
+    toggleChallengeJoin(challenge.id);
+  };
 
   return (
-    <View style={[styles.card, { backgroundColor: cardColor, borderColor }]}>
+    <View
+      style={[
+        styles.card,
+        {
+          backgroundColor: cardColor,
+          borderColor: joined ? success : borderColor,
+          borderWidth: joined ? 2 : 1,
+        },
+      ]}>
       <View style={styles.headerRow}>
         <ThemedText style={styles.emoji}>{challenge.icon}</ThemedText>
         <View style={styles.headerText}>
@@ -34,7 +73,7 @@ export function ChallengeCard({ challenge }: Props) {
         <View style={styles.metaItem}>
           <Ionicons name="people-outline" size={16} color={muted} />
           <ThemedText style={[styles.metaText, { color: muted }]}>
-            {challenge.participants} joined
+            {challenge.participants.toLocaleString()} joined
           </ThemedText>
         </View>
         <View style={styles.metaItem}>
@@ -63,19 +102,53 @@ export function ChallengeCard({ challenge }: Props) {
         </View>
       </View>
 
-      <Pressable
-        style={[styles.cta, { backgroundColor: info }]}
+      {joined ? (
+        <View style={[styles.joinedBanner, { backgroundColor: mutedBg, borderColor }]}>
+          <Ionicons name="checkmark-circle" size={18} color={success} />
+          <ThemedText style={[styles.joinedBannerText, { color: muted }]}>
+            {"You're in — keep logging activities to move the bar."}
+          </ThemedText>
+        </View>
+      ) : null}
+
+      <TouchableOpacity
+        activeOpacity={0.88}
+        onPress={onToggleJoin}
+        disabled={!canPress}
+        hitSlop={{ top: 8, bottom: 8, left: 4, right: 4 }}
+        style={[
+          styles.cta,
+          {
+            backgroundColor: joined ? mutedBg : info,
+            borderColor: joined ? borderColor : info,
+            borderWidth: joined ? 1 : 0,
+            opacity: !canPress ? 0.55 : 1,
+          },
+        ]}
         accessibilityRole="button"
-        accessibilityLabel="Join challenge">
-        <ThemedText style={[styles.ctaText, { color: primaryText }]}>Join Challenge</ThemedText>
-      </Pressable>
+        accessibilityLabel={joined ? 'Leave challenge' : 'Join challenge'}
+        accessibilityState={{ selected: joined, disabled: !canPress }}>
+        {!canPress ? (
+          <ActivityIndicator color={joined ? muted : primaryText} />
+        ) : (
+          <View style={styles.ctaInner}>
+            <Ionicons
+              name={joined ? 'checkmark-circle' : 'add-circle-outline'}
+              size={22}
+              color={joined ? tint : primaryText}
+            />
+            <ThemedText style={[styles.ctaText, { color: joined ? tint : primaryText }]}>
+              {joined ? 'Joined · tap to leave' : 'Join challenge'}
+            </ThemedText>
+          </View>
+        )}
+      </TouchableOpacity>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   card: {
-    borderWidth: 1,
     borderRadius: 12,
     padding: 16,
     marginBottom: 12,
@@ -132,13 +205,35 @@ const styles = StyleSheet.create({
     height: '100%',
     borderRadius: 4,
   },
-  cta: {
-    paddingVertical: 12,
-    borderRadius: 10,
+  joinedBanner: {
+    flexDirection: 'row',
     alignItems: 'center',
+    gap: 8,
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    borderRadius: 10,
+    borderWidth: StyleSheet.hairlineWidth,
+    marginBottom: 12,
+  },
+  joinedBannerText: {
+    flex: 1,
+    fontSize: 13,
+    lineHeight: 18,
+  },
+  cta: {
+    paddingVertical: 14,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    minHeight: 52,
+  },
+  ctaInner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
   },
   ctaText: {
-    fontWeight: '600',
+    fontWeight: '700',
     fontSize: 16,
   },
 });

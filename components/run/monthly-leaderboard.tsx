@@ -66,7 +66,7 @@ export function MonthlyLeaderboard({
         <View style={[styles.empty, { borderColor: border, backgroundColor: card }]}>
           <ThemedText style={{ color: muted }}>No activities this month yet.</ThemedText>
           <ThemedText style={[styles.emptyHint, { color: muted }]}>
-            Post a run or check another month.
+            Log an activity or try another month.
           </ThemedText>
         </View>
       ) : (

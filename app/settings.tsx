@@ -7,6 +7,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { ThemedText } from '@/components/themed-text';
 import { useAppData } from '@/context/app-data';
 import { useThemeColor } from '@/hooks/use-theme-color';
+import { navigateToLogin } from '@/lib/auth-navigation';
 
 export default function SettingsScreen() {
   const router = useRouter();
@@ -26,6 +27,21 @@ export default function SettingsScreen() {
         <View style={{ width: 26 }} />
       </View>
       <ScrollView contentContainerStyle={styles.scroll}>
+        {!isLoggedIn ? (
+          <Pressable
+            style={[styles.card, styles.signInCard, { backgroundColor: card, borderColor: border }]}
+            onPress={() => navigateToLogin(router)}
+            accessibilityRole="button"
+            accessibilityLabel="Sign in">
+            <View style={styles.signInRow}>
+              <ThemedText type="defaultSemiBold">Sign in or create account</ThemedText>
+              <Ionicons name="chevron-forward" size={20} color={muted} />
+            </View>
+            <ThemedText style={[styles.signInSub, { color: muted }]}>
+              Sync your profile with Firebase when configured, or use a demo account.
+            </ThemedText>
+          </Pressable>
+        ) : null}
         {isLoggedIn && session ? (
           <View style={[styles.card, { backgroundColor: card, borderColor: border }]}>
             <View style={styles.accountBlock}>
@@ -117,6 +133,20 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     borderWidth: StyleSheet.hairlineWidth,
     overflow: 'hidden',
+  },
+  signInCard: {
+    padding: 16,
+    gap: 8,
+  },
+  signInRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 12,
+  },
+  signInSub: {
+    fontSize: 14,
+    lineHeight: 20,
   },
   row: {
     flexDirection: 'row',

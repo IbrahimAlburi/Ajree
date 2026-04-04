@@ -31,7 +31,7 @@ export default function ChallengesScreen() {
             Pick a goal that fits your week — progress is saved on device for this demo.
           </ThemedText>
           {mockChallenges.map((challenge) => (
-            <ChallengeCard key={challenge.title} challenge={challenge} />
+            <ChallengeCard key={challenge.id} challenge={challenge} />
           ))}
         </View>
       </ScrollView>

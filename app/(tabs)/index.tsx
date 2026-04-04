@@ -18,6 +18,7 @@ import { ThemedText } from '@/components/themed-text';
 import type { FeedActivity } from '@/constants/run-data';
 import { mockFollowing } from '@/constants/run-data';
 import { useAppData } from '@/context/app-data';
+import { navigateToLogin } from '@/lib/auth-navigation';
 import { getFeedModeLabel, pickHeaderTagline, pickPulseTips } from '@/lib/home-copy';
 import { buildMonthlyKmLeaderboard, mergeLeaderboardActivities } from '@/lib/leaderboard';
 import { useThemeColor } from '@/hooks/use-theme-color';
@@ -173,6 +174,7 @@ export default function HomeScreen() {
           isLoggedIn={isLoggedIn}
           firstName={firstName}
           stats={isLoggedIn ? profile.stats : null}
+          onGuestSignInPress={() => navigateToLogin(router)}
         />
 
         <ScrollView
@@ -197,9 +199,9 @@ export default function HomeScreen() {
             onPress={goPost}
             style={[styles.quickPrimary, { backgroundColor: tint }]}
             accessibilityRole="button"
-            accessibilityLabel="Log a run">
-            <Ionicons name="add-circle-outline" size={22} color={primaryText} />
-            <ThemedText style={[styles.quickPrimaryText, { color: primaryText }]}>Log a run</ThemedText>
+            accessibilityLabel="Log an activity">
+            <Ionicons name="fitness-outline" size={22} color={primaryText} />
+            <ThemedText style={[styles.quickPrimaryText, { color: primaryText }]}>Log activity</ThemedText>
           </Pressable>
           <Pressable
             onPress={scrollToLeaderboard}
@@ -279,7 +281,7 @@ export default function HomeScreen() {
             <ThemedText style={[styles.feedTitle, { color: text }]}>{feedCopy.title}</ThemedText>
             <ThemedText style={[styles.feedMeta, { color: muted }]}>
               {displayedFeed.length} activit{displayedFeed.length === 1 ? 'y' : 'ies'}
-              {feedMode === 'foryou' ? ' in this stream' : ' from people you follow'}
+              {feedMode === 'foryou' ? ' in this stream' : ' from your crew'}
             </ThemedText>
           </View>
 

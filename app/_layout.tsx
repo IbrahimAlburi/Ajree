@@ -18,6 +18,7 @@ export default function RootLayout() {
       <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
         <Stack>
           <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+          <Stack.Screen name="login" options={{ title: 'Sign in' }} />
           <Stack.Screen name="modal" options={{ presentation: 'modal', title: 'Modal' }} />
           <Stack.Screen
             name="notifications"
@@ -26,7 +27,7 @@ export default function RootLayout() {
           <Stack.Screen name="activity/[id]" options={{ title: 'Activity' }} />
           <Stack.Screen name="edit-profile" options={{ presentation: 'modal', title: 'Edit profile' }} />
           <Stack.Screen name="settings" options={{ presentation: 'modal', title: 'Settings' }} />
-          <Stack.Screen name="follow-list" options={{ title: 'Connections' }} />
+          <Stack.Screen name="follow-list" options={{ headerShown: false }} />
           <Stack.Screen name="user/[username]" options={{ headerShown: false }} />
         </Stack>
         <StatusBar style="auto" />

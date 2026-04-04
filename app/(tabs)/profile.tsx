@@ -4,11 +4,11 @@ import { useMemo } from 'react';
 import { ActivityIndicator, Dimensions, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { LoginSection } from '@/components/profile/login-section';
 import { OtherUserProfile } from '@/components/profile/other-user-profile';
 import { ProfileHeader } from '@/components/run/profile-header';
 import { ThemedText } from '@/components/themed-text';
 import { useAppData } from '@/context/app-data';
+import { navigateToLogin } from '@/lib/auth-navigation';
 import {
   buildMonthlyKmLeaderboard,
   findMonthlyRankBadge,
@@ -53,6 +53,7 @@ export default function ProfileScreen() {
   const bg = useThemeColor({}, 'background');
   const mutedBg = useThemeColor({}, 'muted');
   const muted = useThemeColor({}, 'mutedForeground');
+  const text = useThemeColor({}, 'text');
 
   /** Someone else’s profile (or public browse while logged out). */
   const showOtherProfile =
@@ -82,14 +83,21 @@ export default function ProfileScreen() {
   if (!isLoggedIn) {
     return (
       <SafeAreaView style={[styles.safe, { backgroundColor: bg }]} edges={['top']}>
-        <ScrollView
-          keyboardShouldPersistTaps="handled"
-          contentContainerStyle={styles.loginScroll}
-          showsVerticalScrollIndicator={false}>
+        <ScrollView contentContainerStyle={styles.loginScroll} showsVerticalScrollIndicator={false}>
           <ThemedText type="subtitle" style={styles.tabTitle}>
             Profile
           </ThemedText>
-          <LoginSection />
+          <ThemedText style={[styles.guestBody, { color: muted }]}>
+            Sign in to save your runs, sync your profile with Firebase when configured, and show up on
+            the leaderboard.
+          </ThemedText>
+          <Pressable
+            onPress={() => navigateToLogin(router)}
+            style={[styles.loginCta, { backgroundColor: mutedBg, borderColor: muted }]}>
+            <ThemedText type="defaultSemiBold" style={[styles.loginCtaText, { color: text }]}>
+              Sign in or create account
+            </ThemedText>
+          </Pressable>
         </ScrollView>
       </SafeAreaView>
     );
@@ -154,6 +162,22 @@ const styles = StyleSheet.create({
     paddingTop: 8,
     paddingBottom: 4,
     fontSize: 22,
+  },
+  guestBody: {
+    paddingHorizontal: 16,
+    fontSize: 15,
+    lineHeight: 22,
+    marginBottom: 16,
+  },
+  loginCta: {
+    marginHorizontal: 16,
+    paddingVertical: 16,
+    borderRadius: 14,
+    borderWidth: StyleSheet.hairlineWidth,
+    alignItems: 'center',
+  },
+  loginCtaText: {
+    fontSize: 16,
   },
   section: {
     padding: 16,

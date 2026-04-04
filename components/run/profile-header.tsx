@@ -30,7 +30,7 @@ export function ProfileHeader({
   following = false,
   onFollowToggle,
   onSecondaryAction,
-  secondaryLabel = 'Log a run',
+  secondaryLabel = 'Log activity',
   mapsWithPreview = 0,
   leaderboardBadge = null,
 }: Props) {
@@ -50,39 +50,39 @@ export function ProfileHeader({
     <Image source={{ uri: user.avatar }} style={styles.avatar} />
   );
 
-  const followersCell = isOwner ? (
+  const supportersCell = isOwner ? (
     <Pressable
       style={styles.statBox}
       onPress={() =>
-        router.push({ pathname: '/follow-list', params: { type: 'followers' } })
+        router.push({ pathname: '/follow-list', params: { type: 'supporters' } })
       }
       accessibilityRole="button"
-      accessibilityLabel={`${stats.followers} followers`}>
+      accessibilityLabel={`${stats.followers} supporters cheering your runs`}>
       <ThemedText style={[styles.statValue, { color: text }]}>{formatCount(stats.followers)}</ThemedText>
-      <ThemedText style={[styles.statLabel, { color: muted }]}>Followers</ThemedText>
+      <ThemedText style={[styles.statLabel, { color: muted }]}>Supporters</ThemedText>
     </Pressable>
   ) : (
     <View style={styles.statBox}>
       <ThemedText style={[styles.statValue, { color: text }]}>{formatCount(stats.followers)}</ThemedText>
-      <ThemedText style={[styles.statLabel, { color: muted }]}>Followers</ThemedText>
+      <ThemedText style={[styles.statLabel, { color: muted }]}>Supporters</ThemedText>
     </View>
   );
 
-  const followingCell = isOwner ? (
+  const crewCell = isOwner ? (
     <Pressable
       style={styles.statBox}
       onPress={() =>
-        router.push({ pathname: '/follow-list', params: { type: 'following' } })
+        router.push({ pathname: '/follow-list', params: { type: 'crew' } })
       }
       accessibilityRole="button"
-      accessibilityLabel={`${stats.following} following`}>
+      accessibilityLabel={`${stats.following} runners on your crew`}>
       <ThemedText style={[styles.statValue, { color: text }]}>{formatCount(stats.following)}</ThemedText>
-      <ThemedText style={[styles.statLabel, { color: muted }]}>Following</ThemedText>
+      <ThemedText style={[styles.statLabel, { color: muted }]}>Crew</ThemedText>
     </Pressable>
   ) : (
     <View style={styles.statBox}>
       <ThemedText style={[styles.statValue, { color: text }]}>{formatCount(stats.following)}</ThemedText>
-      <ThemedText style={[styles.statLabel, { color: muted }]}>Following</ThemedText>
+      <ThemedText style={[styles.statLabel, { color: muted }]}>Crew</ThemedText>
     </View>
   );
 
@@ -164,9 +164,9 @@ export function ProfileHeader({
 
       <View style={[styles.statsPanel, { backgroundColor: mutedBg, borderColor: borderColor }]}>
         <View style={styles.statsRow}>
-          {followersCell}
+          {supportersCell}
           <View style={[styles.vDivider, { backgroundColor: borderColor }]} />
-          {followingCell}
+          {crewCell}
         </View>
 
         <View style={[styles.hDivider, { backgroundColor: borderColor }]} />
@@ -210,14 +210,14 @@ export function ProfileHeader({
               following && styles.followBtnOutline,
             ]}
             accessibilityRole="button"
-            accessibilityLabel={following ? 'Unfollow' : 'Follow'}>
+            accessibilityLabel={following ? 'Leave crew' : 'Join their crew'}>
             <ThemedText
               style={{
                 fontWeight: '700',
                 color: following ? muted : primaryText,
                 textAlign: 'center',
               }}>
-              {following ? 'Following' : 'Follow'}
+              {following ? 'On crew' : 'Join crew'}
             </ThemedText>
           </Pressable>
           <Pressable

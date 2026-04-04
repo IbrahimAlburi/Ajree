@@ -1,4 +1,3 @@
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import {
   initializeApp,
   getApps,
@@ -7,12 +6,7 @@ import {
   type FirebaseOptions,
 } from 'firebase/app';
 import { getFirestore, type Firestore } from 'firebase/firestore';
-import {
-  getAuth as firebaseGetAuth,
-  initializeAuth,
-  getReactNativePersistence,
-  type Auth,
-} from 'firebase/auth';
+import { getAuth as firebaseGetAuth, type Auth } from 'firebase/auth';
 import { Platform } from 'react-native';
 
 function tryReadFirebaseConfig(): FirebaseOptions | null {
@@ -75,17 +69,9 @@ let authInstance: Auth | undefined;
 export function getFirebaseAuth(): Auth {
   if (authInstance) return authInstance;
   const app = getFirebaseApp();
-  if (Platform.OS === 'web') {
-    authInstance = firebaseGetAuth(app);
-  } else {
-    try {
-      authInstance = initializeAuth(app, {
-        persistence: getReactNativePersistence(AsyncStorage),
-      });
-    } catch {
-      authInstance = firebaseGetAuth(app);
-    }
-  }
+  // `getAuth` works on web and React Native; Firebase 11+ no longer exports
+  // `getReactNativePersistence` from `firebase/auth` in typings.
+  authInstance = firebaseGetAuth(app);
   return authInstance;
 }
 

@@ -5,9 +5,12 @@ import { useRouter } from 'expo-router';
 import { Pressable, StyleSheet, View } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
+import { TrackMap } from '@/components/run/track-map';
 import { useAppData } from '@/context/app-data';
 import type { FeedActivity } from '@/constants/run-data';
+import { navigateToLogin } from '@/lib/auth-navigation';
 import { openRouteInMaps } from '@/lib/maps';
+import { STRAVA_ROUTE_ORANGE } from '@/constants/route-brand';
 import { navigateToUserProfile } from '@/lib/profile-navigation';
 import { useThemeColor } from '@/hooks/use-theme-color';
 
@@ -23,12 +26,15 @@ export function ActivityCard({ id, user, activity, stats }: FeedActivity) {
   const muted = useThemeColor({}, 'mutedForeground');
   const info = useThemeColor({}, 'info');
   const success = useThemeColor({}, 'success');
-  const destructive = useThemeColor({}, 'destructive');
   const mutedBg = useThemeColor({}, 'muted');
   const tint = useThemeColor({}, 'tint');
 
-  const handleLike = () => {
+  const handleKudos = () => {
     void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    if (!isLoggedIn) {
+      navigateToLogin(router);
+      return;
+    }
     toggleLike(id);
   };
 
@@ -44,29 +50,42 @@ export function ActivityCard({ id, user, activity, stats }: FeedActivity) {
     });
   };
 
+  const accent = activity.type === 'race' ? success : tint;
+  const kindLine =
+    activity.type === 'race' ? 'Race or event · shared activity' : 'Training run · shared activity';
+
   return (
-    <View style={[styles.card, { backgroundColor: cardColor, borderColor: borderColor }]}>
+    <View
+      style={[
+        styles.card,
+        {
+          backgroundColor: cardColor,
+          borderColor: borderColor,
+          borderLeftColor: accent,
+        },
+      ]}>
       <View style={styles.row}>
         <Pressable onPress={goProfile} accessibilityRole="button" accessibilityLabel={`${user.name} profile`}>
           <Image source={{ uri: user.avatar }} style={styles.avatar} />
         </Pressable>
         <View style={styles.headerText}>
-          <Pressable onPress={goProfile}>
-            <View style={styles.nameRow}>
+          <View style={styles.nameRow}>
+            <Pressable onPress={goProfile} style={styles.namePress}>
               <ThemedText type="defaultSemiBold">{user.name}</ThemedText>
-              {activity.type === 'race' && (
-                <Ionicons name="ribbon" size={16} color={success} style={styles.award} />
-              )}
+            </Pressable>
+            <View style={[styles.typePill, { backgroundColor: mutedBg, borderColor: borderColor }]}>
+              <ThemedText style={[styles.typePillText, { color: activity.type === 'race' ? accent : tint }]}>
+                {activity.type === 'race' ? 'RACE' : 'RUN'}
+              </ThemedText>
             </View>
-          </Pressable>
+          </View>
           <View style={styles.metaRow}>
             <Pressable onPress={goProfile} hitSlop={{ top: 6, bottom: 6, left: 0, right: 4 }}>
-              <ThemedText style={[styles.meta, styles.handle, { color: tint }]}>
-                @{user.username}
-              </ThemedText>
+              <ThemedText style={[styles.meta, styles.handle, { color: info }]}>@{user.username}</ThemedText>
             </Pressable>
             <ThemedText style={[styles.meta, { color: muted }]}> · {activity.timestamp}</ThemedText>
           </View>
+          <ThemedText style={[styles.kindLine, { color: muted }]}>{kindLine}</ThemedText>
         </View>
       </View>
 
@@ -80,7 +99,11 @@ export function ActivityCard({ id, user, activity, stats }: FeedActivity) {
           </ThemedText>
         ) : null}
 
-        {activity.mapImage ? (
+        {activity.routeCoords && activity.routeCoords.length >= 2 ? (
+          <View style={[styles.mapWrap, { backgroundColor: mutedBg }]}>
+            <TrackMap coords={activity.routeCoords} height={192} strokeColor={STRAVA_ROUTE_ORANGE} />
+          </View>
+        ) : activity.mapImage ? (
           <View style={[styles.mapWrap, { backgroundColor: mutedBg }]}>
             <Image source={{ uri: activity.mapImage }} style={styles.mapImage} contentFit="cover" />
           </View>
@@ -96,15 +119,15 @@ export function ActivityCard({ id, user, activity, stats }: FeedActivity) {
           },
         ]}>
         <View style={styles.statCol}>
-          <ThemedText style={[styles.statLabel, { color: muted }]}>Distance</ThemedText>
+          <ThemedText style={[styles.statLabel, { color: muted }]}>DISTANCE</ThemedText>
           <ThemedText type="defaultSemiBold">{activity.distance.toFixed(2)} km</ThemedText>
         </View>
         <View style={styles.statCol}>
-          <ThemedText style={[styles.statLabel, { color: muted }]}>Time</ThemedText>
+          <ThemedText style={[styles.statLabel, { color: muted }]}>TIME</ThemedText>
           <ThemedText type="defaultSemiBold">{activity.duration}</ThemedText>
         </View>
         <View style={styles.statCol}>
-          <ThemedText style={[styles.statLabel, { color: muted }]}>Pace</ThemedText>
+          <ThemedText style={[styles.statLabel, { color: muted }]}>PACE</ThemedText>
           <ThemedText type="defaultSemiBold">{activity.pace}</ThemedText>
         </View>
       </View>
@@ -114,29 +137,33 @@ export function ActivityCard({ id, user, activity, stats }: FeedActivity) {
           onPress={() => openRouteInMaps(activity.route ?? '')}
           accessibilityRole="link"
           accessibilityLabel="Open route in maps">
-          <ThemedText style={[styles.route, { color: muted }]}>📍 {activity.route} · Maps</ThemedText>
+          <ThemedText style={[styles.route, { color: muted }]}>
+            {activity.route} <ThemedText style={{ color: tint }}>· Maps</ThemedText>
+          </ThemedText>
         </Pressable>
       ) : null}
 
       <View style={[styles.actions, { borderTopColor: borderColor }]}>
         <Pressable
-          onPress={handleLike}
+          onPress={handleKudos}
           style={styles.actionBtn}
           accessibilityRole="button"
-          accessibilityLabel={likeState.liked ? 'Unlike' : 'Like'}>
+          accessibilityLabel={likeState.liked ? 'Remove kudos' : 'Give kudos'}>
           <Ionicons
-            name={likeState.liked ? 'heart' : 'heart-outline'}
+            name={likeState.liked ? 'thumbs-up' : 'thumbs-up-outline'}
             size={22}
-            color={likeState.liked ? destructive : muted}
+            color={likeState.liked ? tint : muted}
           />
+          <ThemedText style={[styles.actionLabel, { color: muted }]}>Kudos</ThemedText>
           <ThemedText style={[styles.actionCount, { color: muted }]}>{likeState.count}</ThemedText>
         </Pressable>
         <Pressable
           onPress={handleComment}
           style={styles.actionBtn}
           accessibilityRole="button"
-          accessibilityLabel="Comments">
-          <Ionicons name="chatbubble-outline" size={20} color={muted} />
+          accessibilityLabel="Open discussion">
+          <Ionicons name="chatbubbles-outline" size={20} color={muted} />
+          <ThemedText style={[styles.actionLabel, { color: muted }]}>Comment</ThemedText>
           <ThemedText style={[styles.actionCount, { color: muted }]}>{commentCount}</ThemedText>
         </Pressable>
       </View>
@@ -149,35 +176,50 @@ const styles = StyleSheet.create({
     marginHorizontal: 16,
     marginBottom: 14,
     padding: 16,
-    borderRadius: 18,
+    borderRadius: 4,
     borderWidth: StyleSheet.hairlineWidth,
+    borderLeftWidth: 4,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.07,
-    shadowRadius: 10,
-    elevation: 3,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 8,
+    elevation: 2,
   },
   row: {
     flexDirection: 'row',
-    alignItems: 'center',
+    alignItems: 'flex-start',
     gap: 12,
     marginBottom: 12,
   },
   avatar: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
   },
   headerText: {
     flex: 1,
+    minWidth: 0,
   },
   nameRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
+    justifyContent: 'space-between',
+    gap: 8,
   },
-  award: {
-    marginTop: 1,
+  namePress: {
+    flex: 1,
+    minWidth: 0,
+  },
+  typePill: {
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 4,
+    borderWidth: StyleSheet.hairlineWidth,
+  },
+  typePillText: {
+    fontSize: 10,
+    fontWeight: '800',
+    letterSpacing: 0.6,
   },
   meta: {
     fontSize: 13,
@@ -189,54 +231,69 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginTop: 2,
   },
+  kindLine: {
+    fontSize: 12,
+    marginTop: 6,
+    lineHeight: 16,
+  },
   handle: {
     fontWeight: '600',
   },
   title: {
-    marginBottom: 8,
+    marginBottom: 10,
+    fontSize: 17,
+    lineHeight: 24,
   },
   mapWrap: {
-    borderRadius: 14,
+    borderRadius: 4,
     overflow: 'hidden',
     marginBottom: 12,
   },
   mapImage: {
     width: '100%',
-    height: 192,
+    height: 200,
   },
   statsGrid: {
     flexDirection: 'row',
     borderWidth: 1,
-    borderRadius: 10,
+    borderRadius: 4,
     padding: 12,
     marginBottom: 12,
-    gap: 16,
+    gap: 12,
   },
   statCol: {
     flex: 1,
     minWidth: 0,
   },
   statLabel: {
-    fontSize: 11,
-    marginBottom: 4,
+    fontSize: 10,
+    marginBottom: 6,
+    fontWeight: '700',
+    letterSpacing: 0.7,
   },
   route: {
     fontSize: 14,
     marginBottom: 12,
+    lineHeight: 20,
   },
   actions: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 24,
-    paddingTop: 10,
+    gap: 28,
+    paddingTop: 12,
     borderTopWidth: StyleSheet.hairlineWidth,
   },
   actionBtn: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    gap: 6,
+  },
+  actionLabel: {
+    fontSize: 14,
+    fontWeight: '600',
   },
   actionCount: {
     fontSize: 14,
+    fontWeight: '500',
   },
 });

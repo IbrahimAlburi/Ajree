@@ -39,9 +39,9 @@ export default function TabLayout() {
       <Tabs.Screen
         name="post"
         options={{
-          title: 'Post',
+          title: 'Log',
           tabBarIcon: ({ color, focused }) => (
-            <Ionicons name={focused ? 'add-circle' : 'add-circle-outline'} size={26} color={color} />
+            <Ionicons name={focused ? 'fitness' : 'fitness-outline'} size={26} color={color} />
           ),
         }}
       />

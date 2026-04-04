@@ -1,5 +1,5 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
-import { StyleSheet, View } from 'react-native';
+import { Pressable, StyleSheet, View } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
 import type { ProfileStats } from '@/constants/run-data';
@@ -10,9 +10,11 @@ type Props = {
   isLoggedIn: boolean;
   firstName: string;
   stats: ProfileStats | null;
+  /** Opens the dedicated sign-in screen (guest state only). */
+  onGuestSignInPress?: () => void;
 };
 
-export function HomeHero({ isLoggedIn, firstName, stats }: Props) {
+export function HomeHero({ isLoggedIn, firstName, stats, onGuestSignInPress }: Props) {
   const card = useThemeColor({}, 'card');
   const border = useThemeColor({}, 'border');
   const muted = useThemeColor({}, 'mutedForeground');
@@ -58,20 +60,27 @@ export function HomeHero({ isLoggedIn, firstName, stats }: Props) {
               </ThemedText>
             </View>
             <View style={[styles.statCard, { backgroundColor: mutedBg, borderColor: border }]}>
-              <Ionicons name="people-outline" size={18} color={tint} style={styles.statIcon} />
-              <ThemedText style={[styles.statNudge, { color: muted }]}>Followers</ThemedText>
+              <Ionicons name="heart-outline" size={18} color={tint} style={styles.statIcon} />
+              <ThemedText style={[styles.statNudge, { color: muted }]}>Supporters</ThemedText>
               <ThemedText type="defaultSemiBold" style={[styles.statNumber, { color: text }]}>
                 {stats.followers.toLocaleString()}
               </ThemedText>
             </View>
           </View>
         ) : (
-          <View style={[styles.guestHint, { backgroundColor: mutedBg, borderColor: border }]}>
+          <Pressable
+            onPress={onGuestSignInPress}
+            disabled={!onGuestSignInPress}
+            style={[styles.guestHint, { backgroundColor: mutedBg, borderColor: border }]}
+            accessibilityRole={onGuestSignInPress ? 'button' : undefined}
+            accessibilityLabel="Sign in">
             <Ionicons name="person-circle-outline" size={20} color={tint} />
             <ThemedText style={[styles.guestHintText, { color: muted }]}>
-              Sign in from Profile to save runs, likes, and your place on the leaderboard.
+              {onGuestSignInPress
+                ? 'Tap to sign in — log activities, kudos, and your place on the leaderboard.'
+                : 'Sign in from Profile to log activities, kudos, and your place on the leaderboard.'}
             </ThemedText>
-          </View>
+          </Pressable>
         )}
       </View>
     </View>

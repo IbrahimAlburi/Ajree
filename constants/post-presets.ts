@@ -1,4 +1,4 @@
-/** Curated map thumbnails for new posts (no upload required). */
+/** Curated map thumbnails for logged activities (no upload required). */
 export const ROUTE_MAP_IMAGES = [
   'https://images.unsplash.com/photo-1502904550040-7534597429ae?w=800&h=500&fit=crop',
   'https://images.unsplash.com/photo-1486218119243-13883505764c?w=800&h=500&fit=crop',

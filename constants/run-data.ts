@@ -1,5 +1,8 @@
 export type ActivityType = 'run' | 'race';
 
+/** GPS path from `expo-location` (stored with activities, shown on map). */
+export type RouteCoord = { latitude: number; longitude: number };
+
 export interface FeedActivity {
   id: string;
   /** Epoch ms — used for monthly km leaderboard (defaults derived from `post-{timestamp}` id if omitted). */
@@ -18,6 +21,8 @@ export interface FeedActivity {
     route?: string;
     timestamp: string;
     mapImage?: string;
+    /** Recorded GPS track (native + web); optional for manual-only logs. */
+    routeCoords?: RouteCoord[];
   };
   stats: {
     likes: number;
@@ -26,6 +31,7 @@ export interface FeedActivity {
 }
 
 export interface Challenge {
+  id: string;
   title: string;
   description: string;
   goal: string;
@@ -272,6 +278,7 @@ export const mockFollowing: FollowPerson[] = [
 
 export const mockChallenges: Challenge[] = [
   {
+    id: 'april-distance',
     title: 'April Distance Challenge',
     description: 'Run 100km this month',
     goal: '100km',
@@ -281,6 +288,7 @@ export const mockChallenges: Challenge[] = [
     icon: '🏃',
   },
   {
+    id: 'early-bird',
     title: 'Early Bird Special',
     description: 'Complete 10 morning runs',
     goal: '10 runs',
@@ -290,6 +298,7 @@ export const mockChallenges: Challenge[] = [
     icon: '🌅',
   },
   {
+    id: 'speed-demon',
     title: 'Speed Demon',
     description: 'Run 5K under 25 minutes',
     goal: '<25min',

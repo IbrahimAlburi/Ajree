@@ -16,15 +16,23 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { ThemedText } from '@/components/themed-text';
+import { StravaRouteBuilderModal } from '@/components/run/strava-route-builder-modal';
+import { TrackMap } from '@/components/run/track-map';
 import { DISTANCE_PRESETS_KM, ROUTE_MAP_IMAGES } from '@/constants/post-presets';
+import { STRAVA_ROUTE_ORANGE } from '@/constants/route-brand';
+import type { RouteCoord } from '@/constants/run-data';
 import { useAppData } from '@/context/app-data';
+import { useTrackRecording } from '@/hooks/use-track-recording';
+import { navigateToLogin } from '@/lib/auth-navigation';
 import { computePaceFromDuration } from '@/lib/run-math';
 import { openRouteInMaps } from '@/lib/maps';
+import { accumulatedDistanceKm } from '@/lib/route-geo';
 import { useThemeColor } from '@/hooks/use-theme-color';
 
 export default function PostScreen() {
   const router = useRouter();
   const { publishActivity, isLoggedIn, profile } = useAppData();
+  const track = useTrackRecording();
 
   const [kind, setKind] = useState<'run' | 'race'>('run');
   const [title, setTitle] = useState('');
@@ -35,6 +43,8 @@ export default function PostScreen() {
   const [routeName, setRouteName] = useState('');
   const [mapIndex, setMapIndex] = useState(0);
   const [submitting, setSubmitting] = useState(false);
+  const [plannedCoords, setPlannedCoords] = useState<RouteCoord[]>([]);
+  const [routeBuilderOpen, setRouteBuilderOpen] = useState(false);
 
   const bg = useThemeColor({}, 'background');
   const card = useThemeColor({}, 'card');
@@ -53,6 +63,8 @@ export default function PostScreen() {
   );
   const paceForPublish = paceOverride.trim() || autoPace || '5:00/km';
 
+  const plannedKm = useMemo(() => accumulatedDistanceKm(plannedCoords), [plannedCoords]);
+
   const bumpDistance = useCallback((delta: number) => {
     void Haptics.selectionAsync();
     setDistanceKm((d) => Math.max(0.5, Math.round((d + delta) * 2) / 2));
@@ -69,15 +81,39 @@ export default function PostScreen() {
     openRouteInMaps(q);
   }, [routeName]);
 
+  const applyGpsDistance = useCallback(() => {
+    if (track.gpsKm == null || track.gpsKm <= 0) return;
+    void Haptics.selectionAsync();
+    setDistanceKm(Math.round(track.gpsKm * 10) / 10);
+  }, [track.gpsKm]);
+
+  const applyPlannedDistance = useCallback(() => {
+    if (plannedKm <= 0) return;
+    void Haptics.selectionAsync();
+    setDistanceKm(Math.round(plannedKm * 10) / 10);
+  }, [plannedKm]);
+
+  const clearPlanned = useCallback(() => {
+    void Haptics.selectionAsync();
+    setPlannedCoords([]);
+  }, []);
+
   const onPublish = useCallback(async () => {
     if (!isLoggedIn) {
       void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
-      router.push('/(tabs)/profile');
+      navigateToLogin(router);
       return;
     }
     void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     setSubmitting(true);
     try {
+      await track.stop();
+      const routeCoords =
+        plannedCoords.length >= 2
+          ? plannedCoords
+          : track.coords.length >= 2
+            ? track.coords
+            : undefined;
       const id = publishActivity({
         type: kind,
         title,
@@ -87,8 +123,11 @@ export default function PostScreen() {
         pace: paceForPublish,
         routeName,
         mapImage: ROUTE_MAP_IMAGES[mapIndex] ?? ROUTE_MAP_IMAGES[0],
+        routeCoords,
       });
       if (id) {
+        track.clear();
+        setPlannedCoords([]);
         router.push({ pathname: '/activity/[id]', params: { id } });
       }
     } finally {
@@ -106,6 +145,8 @@ export default function PostScreen() {
     paceForPublish,
     routeName,
     mapIndex,
+    track,
+    plannedCoords,
   ]);
 
   return (
@@ -115,14 +156,14 @@ export default function PostScreen() {
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         keyboardVerticalOffset={88}>
         <View style={[styles.header, { backgroundColor: card, borderBottomColor: border }]}>
-          <View>
+          <View style={styles.headerTextCol}>
             <ThemedText type="subtitle" style={styles.headerTitle}>
-              Log a run
+              Log activity
             </ThemedText>
             <ThemedText style={[styles.headerSub, { color: muted }]}>
               {isLoggedIn
-                ? `Posting as @${profile.user.username}`
-                : 'Sign in on Profile to publish'}
+                ? `Sharing as @${profile.user.username} · Home & profile`
+                : 'Sign in to share a workout to your feed'}
             </ThemedText>
           </View>
           <Pressable
@@ -140,13 +181,14 @@ export default function PostScreen() {
           showsVerticalScrollIndicator={false}>
           {!isLoggedIn ? (
             <Pressable
-              onPress={() => router.push('/(tabs)/profile')}
+              onPress={() => navigateToLogin(router)}
               style={[styles.guestBanner, { backgroundColor: mutedBg, borderColor: border }]}>
               <Ionicons name="person-circle-outline" size={28} color={tint} />
               <View style={styles.guestText}>
-                <ThemedText type="defaultSemiBold">Want to share this run?</ThemedText>
+                <ThemedText type="defaultSemiBold">Share workouts with your network</ThemedText>
                 <ThemedText style={[styles.guestHint, { color: muted }]}>
-                  Tap here to sign in — takes two seconds with the demo accounts.
+                  Sign in to log workouts with stats, route preview, and a short reflection. Demo
+                  accounts work when Firebase is off.
                 </ThemedText>
               </View>
               <Ionicons name="chevron-forward" size={20} color={muted} />
@@ -154,7 +196,7 @@ export default function PostScreen() {
           ) : null}
 
           <View style={[styles.card, { backgroundColor: card, borderColor: border }]}>
-            <ThemedText style={[styles.label, { color: muted }]}>What did you do?</ThemedText>
+            <ThemedText style={[styles.label, { color: muted }]}>Activity type</ThemedText>
             <View style={styles.kindRow}>
               <Pressable
                 onPress={() => {
@@ -197,11 +239,145 @@ export default function PostScreen() {
             </View>
           </View>
 
+          <View style={[styles.card, { backgroundColor: card, borderColor: border }]}>
+            <ThemedText style={[styles.label, { color: muted }]}>GPS track (optional)</ThemedText>
+            <ThemedText style={[styles.gpsHint, { color: muted }]}>
+              Start before your run, stop when you finish — we draw the path on the activity. Works on
+              device; web shows a simple line preview.
+            </ThemedText>
+            {track.error ? (
+              <ThemedText style={[styles.gpsError, { color: '#c62828' }]}>{track.error}</ThemedText>
+            ) : null}
+            <View style={styles.gpsActions}>
+              <Pressable
+                onPress={() => {
+                  void Haptics.selectionAsync();
+                  void track.start();
+                }}
+                disabled={track.isRecording}
+                style={[
+                  styles.gpsBtn,
+                  { borderColor: border, backgroundColor: track.isRecording ? mutedBg : card },
+                  track.isRecording && { opacity: 0.6 },
+                ]}>
+                <Ionicons name="radio-button-on" size={18} color={tint} />
+                <ThemedText style={{ fontWeight: '600', color: text }}>Start</ThemedText>
+              </Pressable>
+              <Pressable
+                onPress={() => {
+                  void Haptics.selectionAsync();
+                  void track.stop();
+                }}
+                disabled={!track.isRecording}
+                style={[
+                  styles.gpsBtn,
+                  { borderColor: border, backgroundColor: card },
+                  !track.isRecording && { opacity: 0.5 },
+                ]}>
+                <Ionicons name="stop" size={18} color={text} />
+                <ThemedText style={{ fontWeight: '600', color: text }}>Stop</ThemedText>
+              </Pressable>
+              <Pressable
+                onPress={() => {
+                  void Haptics.selectionAsync();
+                  track.clear();
+                }}
+                style={[styles.gpsBtn, { borderColor: border, backgroundColor: card }]}>
+                <Ionicons name="trash-outline" size={18} color={muted} />
+                <ThemedText style={{ fontWeight: '600', color: muted }}>Clear</ThemedText>
+              </Pressable>
+            </View>
+            {track.isRecording ? (
+              <ThemedText style={[styles.recordingLine, { color: success }]}>Recording GPS…</ThemedText>
+            ) : null}
+            {track.gpsKm != null && track.gpsKm > 0 ? (
+              <View style={styles.gpsMeta}>
+                <ThemedText style={{ color: muted, fontSize: 13 }}>
+                  Track ~{track.gpsKm.toFixed(2)} km · {track.coords.length} points
+                </ThemedText>
+                <Pressable
+                  onPress={applyGpsDistance}
+                  style={[styles.gpsApply, { backgroundColor: mutedBg, borderColor: border }]}>
+                  <ThemedText style={{ color: tint, fontWeight: '700', fontSize: 13 }}>
+                    Use GPS distance
+                  </ThemedText>
+                </Pressable>
+              </View>
+            ) : null}
+            {track.coords.length >= 2 ? (
+              <View style={styles.gpsMap}>
+                <TrackMap coords={track.coords} height={140} />
+              </View>
+            ) : null}
+          </View>
+
+          <View style={[styles.card, { backgroundColor: card, borderColor: border }]}>
+            <ThemedText style={[styles.label, { color: muted }]}>Route builder</ThemedText>
+            <ThemedText style={[styles.gpsHint, { color: muted }]}>
+              Full-screen map: tap to add points in order, see distance and elevation gain (Strava-style).
+              With 2+ points, this path is saved on the activity instead of a GPS recording.
+            </ThemedText>
+            {plannedCoords.length >= 2 && track.coords.length >= 2 ? (
+              <ThemedText style={[styles.routePriorityHint, { color: STRAVA_ROUTE_ORANGE }]}>
+                Planned route will be used (not the GPS track).
+              </ThemedText>
+            ) : null}
+            <Pressable
+              onPress={() => {
+                void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                setRouteBuilderOpen(true);
+              }}
+              style={[styles.stravaBuildBtn, { backgroundColor: STRAVA_ROUTE_ORANGE }]}>
+              <Ionicons name="map-outline" size={22} color="#fff" />
+              <ThemedText style={styles.stravaBuildBtnText}>
+                {plannedCoords.length >= 2 ? 'Edit route' : 'Build route'}
+              </ThemedText>
+            </Pressable>
+            {plannedCoords.length > 0 ? (
+              <Pressable
+                onPress={() => {
+                  void Haptics.selectionAsync();
+                  clearPlanned();
+                }}
+                style={styles.clearRouteLink}>
+                <ThemedText style={{ color: muted, fontSize: 13, fontWeight: '600' }}>
+                  Clear planned route
+                </ThemedText>
+              </Pressable>
+            ) : null}
+            {plannedKm > 0 ? (
+              <View style={styles.gpsMeta}>
+                <ThemedText style={{ color: muted, fontSize: 13 }}>
+                  Route ~{plannedKm.toFixed(2)} km · {plannedCoords.length} points
+                </ThemedText>
+                <Pressable
+                  onPress={applyPlannedDistance}
+                  style={[styles.gpsApply, { backgroundColor: mutedBg, borderColor: border }]}>
+                  <ThemedText style={{ color: STRAVA_ROUTE_ORANGE, fontWeight: '700', fontSize: 13 }}>
+                    Use route distance
+                  </ThemedText>
+                </Pressable>
+              </View>
+            ) : null}
+            {plannedCoords.length >= 2 ? (
+              <View style={styles.gpsMap}>
+                <TrackMap coords={plannedCoords} height={140} strokeColor={STRAVA_ROUTE_ORANGE} />
+              </View>
+            ) : null}
+          </View>
+
+          <StravaRouteBuilderModal
+            visible={routeBuilderOpen}
+            initialCoords={plannedCoords}
+            onClose={() => setRouteBuilderOpen(false)}
+            onSave={(c) => setPlannedCoords(c)}
+          />
+
           <View style={[styles.mapSection, { backgroundColor: card, borderColor: border }]}>
             <View style={styles.mapSectionHead}>
-              <ThemedText style={[styles.label, { color: muted }]}>Route vibe</ThemedText>
+              <ThemedText style={[styles.label, { color: muted }]}>Route preview</ThemedText>
               <ThemedText style={[styles.mapHint, { color: muted }]}>
-                Pick a cover — your real map link is the route name below
+                Choose a cover image — the route field below opens in Maps (Strava-style recap).
               </ThemedText>
             </View>
             <ScrollView
@@ -232,7 +408,7 @@ export default function PostScreen() {
           </View>
 
           <TextInput
-            placeholder="Give it a title (optional)"
+            placeholder="Headline — e.g. Tempo Tuesday, first half marathon"
             placeholderTextColor={muted}
             value={title}
             onChangeText={setTitle}
@@ -242,7 +418,7 @@ export default function PostScreen() {
           <View style={[styles.routeRow, { backgroundColor: inputBg, borderColor: border }]}>
             <Ionicons name="location-outline" size={22} color={tint} style={styles.routeIcon} />
             <TextInput
-              placeholder="Where’d you go? (opens in Maps)"
+              placeholder="Route or location — opens in Maps"
               placeholderTextColor={muted}
               value={routeName}
               onChangeText={setRouteName}
@@ -257,7 +433,7 @@ export default function PostScreen() {
           </View>
 
           <View style={styles.distanceBlock}>
-            <ThemedText style={[styles.label, { color: muted }]}>Distance (km)</ThemedText>
+            <ThemedText style={[styles.label, { color: muted }]}>Distance · km</ThemedText>
             <View style={styles.distanceMain}>
               <Pressable
                 onPress={() => bumpDistance(-0.5)}
@@ -297,7 +473,7 @@ export default function PostScreen() {
 
           <View style={styles.row2}>
             <View style={styles.half}>
-              <ThemedText style={[styles.label, { color: muted }]}>Time (mm:ss)</ThemedText>
+              <ThemedText style={[styles.label, { color: muted }]}>Moving time (mm:ss)</ThemedText>
               <TextInput
                 placeholder="32:00"
                 placeholderTextColor={muted}
@@ -320,12 +496,12 @@ export default function PostScreen() {
           </View>
           {autoPace ? (
             <ThemedText style={[styles.autoPace, { color: muted }]}>
-              Auto pace from time ÷ distance: {autoPace}
+              Calculated pace: {autoPace} — override above if you wore a watch
             </ThemedText>
           ) : null}
 
           <TextInput
-            placeholder="Caption — how did it feel? (optional)"
+            placeholder="Reflection — wins, lessons, or what’s next (optional)"
             placeholderTextColor={muted}
             value={notes}
             onChangeText={setNotes}
@@ -343,22 +519,22 @@ export default function PostScreen() {
             onPress={onPublish}
             disabled={submitting}
             accessibilityRole="button"
-            accessibilityLabel="Publish activity">
+            accessibilityLabel="Share activity">
             {submitting ? (
               <ActivityIndicator color={primaryText} />
             ) : (
               <>
-                <Ionicons name="paper-plane-outline" size={20} color={primaryText} />
+                <Ionicons name="share-outline" size={20} color={primaryText} />
                 <ThemedText style={[styles.shareBtnText, { color: primaryText }]}>
-                  {isLoggedIn ? 'Publish & view' : 'Sign in to publish'}
+                  {isLoggedIn ? 'Share activity' : 'Sign in to share'}
                 </ThemedText>
               </>
             )}
           </Pressable>
 
           <ThemedText style={[styles.footerHint, { color: muted }]}>
-            Publishing sends your run to the home feed and your profile. Open the route in Maps anytime
-            from the pin row or the Maps button.
+            Your activity appears in Discover, Your crew, and on your profile. Others can send kudos
+            and join the discussion on the activity.
           </ThemedText>
         </ScrollView>
       </KeyboardAvoidingView>
@@ -381,6 +557,11 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     borderBottomWidth: StyleSheet.hairlineWidth,
     gap: 12,
+  },
+  headerTextCol: {
+    flex: 1,
+    minWidth: 0,
+    paddingRight: 8,
   },
   headerTitle: {
     fontSize: 22,
@@ -444,6 +625,73 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     borderRadius: 12,
     borderWidth: 1,
+  },
+  gpsHint: {
+    fontSize: 12,
+    lineHeight: 17,
+  },
+  routePriorityHint: {
+    fontSize: 12,
+    fontWeight: '600',
+    marginBottom: 6,
+  },
+  stravaBuildBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 10,
+    paddingVertical: 14,
+    borderRadius: 12,
+    marginTop: 4,
+  },
+  stravaBuildBtnText: {
+    color: '#ffffff',
+    fontWeight: '800',
+    fontSize: 17,
+  },
+  clearRouteLink: {
+    alignSelf: 'center',
+    paddingVertical: 6,
+  },
+  gpsError: {
+    fontSize: 13,
+    marginTop: 4,
+  },
+  gpsActions: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginTop: 10,
+  },
+  gpsBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    borderRadius: 12,
+    borderWidth: 1,
+  },
+  recordingLine: {
+    fontSize: 13,
+    fontWeight: '700',
+    marginTop: 8,
+  },
+  gpsMeta: {
+    marginTop: 10,
+    gap: 8,
+  },
+  gpsApply: {
+    alignSelf: 'flex-start',
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 10,
+    borderWidth: StyleSheet.hairlineWidth,
+  },
+  gpsMap: {
+    marginTop: 10,
+    borderRadius: 12,
+    overflow: 'hidden',
   },
   mapSection: {
     borderRadius: 14,
