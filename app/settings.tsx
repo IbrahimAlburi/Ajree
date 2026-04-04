@@ -7,7 +7,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { ThemedText } from '@/components/themed-text';
 import { useAppData } from '@/context/app-data';
 import { useThemeColor } from '@/hooks/use-theme-color';
-import { navigateToLogin } from '@/lib/auth-navigation';
+import { AUTH_SIGN_UP_HREF, navigateToLogin } from '@/lib/auth-navigation';
 
 export default function SettingsScreen() {
   const router = useRouter();
@@ -28,19 +28,28 @@ export default function SettingsScreen() {
       </View>
       <ScrollView contentContainerStyle={styles.scroll}>
         {!isLoggedIn ? (
-          <Pressable
-            style={[styles.card, styles.signInCard, { backgroundColor: card, borderColor: border }]}
-            onPress={() => navigateToLogin(router)}
-            accessibilityRole="button"
-            accessibilityLabel="Sign in">
-            <View style={styles.signInRow}>
-              <ThemedText type="defaultSemiBold">Sign in or create account</ThemedText>
-              <Ionicons name="chevron-forward" size={20} color={muted} />
-            </View>
+          <View style={[styles.card, styles.signInCard, { backgroundColor: card, borderColor: border }]}>
+            <ThemedText type="defaultSemiBold">Account</ThemedText>
             <ThemedText style={[styles.signInSub, { color: muted }]}>
-              Sync your profile with Firebase when configured, or use a demo account.
+              Sync your profile with Firebase when configured, or use a demo account on Sign in.
             </ThemedText>
-          </Pressable>
+            <View style={styles.authBtnRow}>
+              <Pressable
+                style={[styles.authBtn, { backgroundColor: bg, borderColor: border }]}
+                onPress={() => navigateToLogin(router)}
+                accessibilityRole="button"
+                accessibilityLabel="Sign in">
+                <ThemedText type="defaultSemiBold">Sign in</ThemedText>
+              </Pressable>
+              <Pressable
+                style={[styles.authBtn, { backgroundColor: bg, borderColor: border }]}
+                onPress={() => router.push(AUTH_SIGN_UP_HREF)}
+                accessibilityRole="button"
+                accessibilityLabel="Create account">
+                <ThemedText type="defaultSemiBold">Sign up</ThemedText>
+              </Pressable>
+            </View>
+          </View>
         ) : null}
         {isLoggedIn && session ? (
           <View style={[styles.card, { backgroundColor: card, borderColor: border }]}>
@@ -138,15 +147,22 @@ const styles = StyleSheet.create({
     padding: 16,
     gap: 8,
   },
-  signInRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: 12,
-  },
   signInSub: {
     fontSize: 14,
     lineHeight: 20,
+  },
+  authBtnRow: {
+    flexDirection: 'row',
+    gap: 10,
+    marginTop: 4,
+  },
+  authBtn: {
+    flex: 1,
+    paddingVertical: 14,
+    borderRadius: 12,
+    borderWidth: StyleSheet.hairlineWidth,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   row: {
     flexDirection: 'row',

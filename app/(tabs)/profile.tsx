@@ -8,7 +8,7 @@ import { OtherUserProfile } from '@/components/profile/other-user-profile';
 import { ProfileHeader } from '@/components/run/profile-header';
 import { ThemedText } from '@/components/themed-text';
 import { useAppData } from '@/context/app-data';
-import { navigateToLogin } from '@/lib/auth-navigation';
+import { AUTH_SIGN_UP_HREF, navigateToLogin } from '@/lib/auth-navigation';
 import {
   buildMonthlyKmLeaderboard,
   findMonthlyRankBadge,
@@ -91,13 +91,22 @@ export default function ProfileScreen() {
             Sign in to save your runs, sync your profile with Firebase when configured, and show up on
             the leaderboard.
           </ThemedText>
-          <Pressable
-            onPress={() => navigateToLogin(router)}
-            style={[styles.loginCta, { backgroundColor: mutedBg, borderColor: muted }]}>
-            <ThemedText type="defaultSemiBold" style={[styles.loginCtaText, { color: text }]}>
-              Sign in or create account
-            </ThemedText>
-          </Pressable>
+          <View style={styles.authRow}>
+            <Pressable
+              onPress={() => navigateToLogin(router)}
+              style={[styles.loginCta, styles.loginCtaHalf, { backgroundColor: mutedBg, borderColor: muted }]}>
+              <ThemedText type="defaultSemiBold" style={[styles.loginCtaText, { color: text }]}>
+                Sign in
+              </ThemedText>
+            </Pressable>
+            <Pressable
+              onPress={() => router.push(AUTH_SIGN_UP_HREF)}
+              style={[styles.loginCta, styles.loginCtaHalf, { backgroundColor: mutedBg, borderColor: muted }]}>
+              <ThemedText type="defaultSemiBold" style={[styles.loginCtaText, { color: text }]}>
+                Sign up
+              </ThemedText>
+            </Pressable>
+          </View>
         </ScrollView>
       </SafeAreaView>
     );
@@ -169,12 +178,20 @@ const styles = StyleSheet.create({
     lineHeight: 22,
     marginBottom: 16,
   },
+  authRow: {
+    flexDirection: 'row',
+    gap: 10,
+    paddingHorizontal: 16,
+  },
   loginCta: {
-    marginHorizontal: 16,
     paddingVertical: 16,
     borderRadius: 14,
     borderWidth: StyleSheet.hairlineWidth,
     alignItems: 'center',
+    justifyContent: 'center',
+  },
+  loginCtaHalf: {
+    flex: 1,
   },
   loginCtaText: {
     fontSize: 16,

@@ -16,16 +16,21 @@ import { useAppData } from '@/context/app-data';
 import { useThemeColor } from '@/hooks/use-theme-color';
 
 type Props = {
-  /** Called after a successful sign-in or registration (e.g. navigate away from `/login`). */
+  /** Called after a successful sign-in or registration (e.g. navigate away from auth screens). */
   onAuthSuccess?: () => void;
+  /** When set, hides the sign-in / create toggle and fixes the flow (dedicated `/sign-in` or `/sign-up`). */
+  fixedMode?: 'signin' | 'register';
+  /** Optional row below the primary button (e.g. switch between sign-in and sign-up). */
+  alternateLink?: { lead: string; action: string; onPress: () => void };
 };
 
-export function LoginSection({ onAuthSuccess }: Props) {
+export function LoginSection({ onAuthSuccess, fixedMode, alternateLink }: Props) {
   const { login, register, authError, clearAuthError, useFirebaseAuth } = useAppData();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [busy, setBusy] = useState(false);
   const [mode, setMode] = useState<'signin' | 'register'>('signin');
+  const effectiveMode = fixedMode ?? mode;
 
   const card = useThemeColor({}, 'card');
   const border = useThemeColor({}, 'border');
@@ -40,12 +45,10 @@ export function LoginSection({ onAuthSuccess }: Props) {
     clearAuthError();
     setBusy(true);
     try {
-      let ok = false;
-      if (mode === 'register' && useFirebaseAuth) {
-        ok = await register(email.trim(), password);
-      } else {
-        ok = await login(email.trim(), password);
-      }
+      const ok =
+        effectiveMode === 'register'
+          ? await register(email.trim(), password)
+          : await login(email.trim(), password);
       if (ok) {
         onAuthSuccess?.();
       }
@@ -70,20 +73,24 @@ export function LoginSection({ onAuthSuccess }: Props) {
         </View>
         <ThemedText type="subtitle" style={styles.title}>
           {useFirebaseAuth
-            ? mode === 'register'
+            ? effectiveMode === 'register'
               ? 'Create your account'
               : 'Sign in to your profile'
-            : 'Sign in to your profile'}
+            : effectiveMode === 'register'
+              ? 'Create your account'
+              : 'Sign in to your profile'}
         </ThemedText>
         <ThemedText style={[styles.sub, { color: muted }]}>
-          {useFirebaseAuth
-            ? mode === 'register'
+          {effectiveMode === 'register'
+            ? useFirebaseAuth
               ? 'Your name and handle are saved to Firebase. Use a strong password (6+ characters).'
-              : 'Sign in with the email and password you used at registration. Profile syncs from Firebase.'
-            : 'Use a demo account below. Your profile and activities switch per account.'}
+              : 'Add Firebase keys in .env to register, or go back to Sign in and use a demo account.'
+            : useFirebaseAuth
+              ? 'Sign in with the email and password you used at registration. Profile syncs from Firebase.'
+              : 'Use a demo account below. Your profile and activities switch per account.'}
         </ThemedText>
 
-        {useFirebaseAuth ? (
+        {useFirebaseAuth && !fixedMode ? (
           <View style={[styles.modeRow, { borderColor: border }]}>
             <Pressable
               onPress={() => {
@@ -159,27 +166,40 @@ export function LoginSection({ onAuthSuccess }: Props) {
           onPress={onSubmit}
           disabled={busy}
           accessibilityRole="button"
-          accessibilityLabel={mode === 'register' && useFirebaseAuth ? 'Create account' : 'Sign in'}>
+          accessibilityLabel={effectiveMode === 'register' ? 'Create account' : 'Sign in'}>
           {busy ? (
             <ActivityIndicator color={primaryText} />
           ) : (
             <ThemedText style={[styles.primaryBtnText, { color: primaryText }]}>
-              {useFirebaseAuth && mode === 'register' ? 'Create account' : 'Sign in'}
+              {effectiveMode === 'register' ? 'Create account' : 'Sign in'}
             </ThemedText>
           )}
         </Pressable>
 
-        {!useFirebaseAuth ? (
+        {alternateLink ? (
+          <Pressable
+            onPress={alternateLink.onPress}
+            style={styles.altLinkWrap}
+            accessibilityRole="button"
+            accessibilityLabel={`${alternateLink.lead} ${alternateLink.action}`}>
+            <ThemedText style={[styles.altLinkLead, { color: muted }]}>{alternateLink.lead} </ThemedText>
+            <ThemedText style={[styles.altLinkAction, { color: tint }]}>{alternateLink.action}</ThemedText>
+          </Pressable>
+        ) : null}
+
+        {!useFirebaseAuth && effectiveMode === 'signin' ? (
           <View style={[styles.demoBox, { backgroundColor: inputBg, borderColor: border }]}>
             <ThemedText style={[styles.demoTitle, { color: muted }]}>Demo accounts</ThemedText>
             <ThemedText style={[styles.demoText, { color: textColor }]}>{demoHint}</ThemedText>
           </View>
-        ) : (
+        ) : null}
+
+        {useFirebaseAuth ? (
           <ThemedText style={[styles.firebaseHint, { color: muted }]}>
             Firebase Authentication + Firestore store your profile. Enable Email/Password in the Firebase
             Console and deploy security rules for the `users` collection.
           </ThemedText>
-        )}
+        ) : null}
       </View>
     </KeyboardAvoidingView>
   );
@@ -270,6 +290,23 @@ const styles = StyleSheet.create({
     lineHeight: 17,
     textAlign: 'center',
     marginTop: 4,
+  },
+  altLinkWrap: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginTop: 4,
+    paddingVertical: 4,
+  },
+  altLinkLead: {
+    fontSize: 15,
+    lineHeight: 22,
+  },
+  altLinkAction: {
+    fontSize: 15,
+    lineHeight: 22,
+    fontWeight: '700',
   },
   demoTitle: {
     fontSize: 12,

@@ -6,7 +6,8 @@ import {
   type FirebaseOptions,
 } from 'firebase/app';
 import { getFirestore, type Firestore } from 'firebase/firestore';
-import { getAuth as firebaseGetAuth, type Auth } from 'firebase/auth';
+import { getAuth, initializeAuth, type Auth, type Persistence } from 'firebase/auth';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Platform } from 'react-native';
 
 function tryReadFirebaseConfig(): FirebaseOptions | null {
@@ -69,9 +70,25 @@ let authInstance: Auth | undefined;
 export function getFirebaseAuth(): Auth {
   if (authInstance) return authInstance;
   const app = getFirebaseApp();
-  // `getAuth` works on web and React Native; Firebase 11+ no longer exports
-  // `getReactNativePersistence` from `firebase/auth` in typings.
-  authInstance = firebaseGetAuth(app);
+
+  if (Platform.OS === 'web') {
+    authInstance = getAuth(app);
+    return authInstance;
+  }
+
+  // Public `firebase/auth` typings omit this; Metro still resolves the RN build at runtime.
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const { getReactNativePersistence } = require('firebase/auth') as {
+    getReactNativePersistence: (storage: typeof AsyncStorage) => unknown;
+  };
+
+  try {
+    authInstance = initializeAuth(app, {
+      persistence: getReactNativePersistence(AsyncStorage) as Persistence,
+    });
+  } catch {
+    authInstance = getAuth(app);
+  }
   return authInstance;
 }
 

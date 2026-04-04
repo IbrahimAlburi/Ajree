@@ -1,7 +1,9 @@
 import type { Href } from 'expo-router';
 
-/** Dedicated sign-in / register screen (`app/login.tsx`). Use this instead of pushing Profile for auth. */
-export const AUTH_LOGIN_HREF: Href = '/login';
+/** Dedicated sign-in screen. `/login` redirects here. */
+export const AUTH_LOGIN_HREF: Href = '/sign-in';
+
+export const AUTH_SIGN_UP_HREF: Href = '/sign-up';
 
 type RouterLike = {
   push: (href: Href) => void;
